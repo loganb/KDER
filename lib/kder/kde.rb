@@ -14,7 +14,8 @@ class Kder
     # :singleton-method: kde
     # Accepts a single member array plus optional additional information
     # Returns a two member array, [x_vals,y_vals] representing the kde
-    def kde(arr, bw = nil, opts = {sigmas: Sigmas, sampling_density: MeshCount, threshold: MinimumThresholdValue, minimum_delta: DifferenceThreshold})
+    def kde(arr, bw = nil, opts = {}.freeze)
+      opts = {sigmas: Sigmas, sampling_density: MeshCount, threshold: MinimumThresholdValue, minimum_delta: DifferenceThreshold}.merge(opts)
       unless bw # is nil
         bw = Bandwidth.silverman(arr)
       end
