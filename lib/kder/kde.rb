@@ -1,5 +1,6 @@
+require 'set'
+
 class Kder
-  require 'distribution'
   require_relative 'bandwidth'
   require_relative '../util/statistics'
 
@@ -43,6 +44,43 @@ class Kder
       end
       output << [max,0]
       output.compact.transpose
+    end
+
+    #
+    # :singleton-method: kdevec
+    # Works just like kdevec, but arr is a list of 2-D points of sample value and magnitude. Is this valid math? ¯\_(ツ)_/¯
+    # 
+    def kdevec(arr, bw = nil, opts = {}.freeze)
+      opts = {sigmas: Sigmas, sampling_density: MeshCount, threshold: MinimumThresholdValue, minimum_delta: DifferenceThreshold}.merge(opts)
+      raise "bandwidth must be specified for now" unless bw
+
+      values = arr.sort_by { |v| v[0] }
+
+      # Initialization steps
+      range = bw*opts[:sigmas]
+      min = values.first[0] - range
+      max = values.last[0]  + range
+      step_size = (max-min)/(opts[:sampling_density].to_f)
+      step_size = step_size < MinimumStepSize ? MinimumStepSize : step_size
+
+      # initialize the range variables
+      ranges = (min..max).step(step_size).to_a
+      output = [[min,0]]
+      old_intensity = 0
+      # Step through the range
+      ranges[1..-1].map.with_index do |mid, i|
+        high_end  = mid + range
+        lower_end = mid - range
+        selection_range = (lower_end..high_end)
+        included = values.select {|v| selection_range.include?(v[0])}
+        intensity = included.map {|v| v[1] * Kder::Statistics.custom_pdf(v[0]-mid, bw) }.inject(:+) || 0
+        unless intensity < opts[:threshold] or (intensity - old_intensity).abs < opts[:minimum_delta]
+          output << [mid, intensity ] 
+          old_intensity = intensity
+        end
+      end
+      output << [max,0]
+      output.compact.transpose      
     end
   end
 end

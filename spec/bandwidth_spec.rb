@@ -6,8 +6,8 @@ describe Bandwidth do
   end
   it "returns a value" do 
     bw = Bandwidth.silverman(@test_arr, @test_arr.standard_deviation)
-    bw.should be_a(Float)
-    bw.should be_within(0.15).of(3.1)
+    expect(bw).to be_a(Float)
+    expect(bw).to be_within(0.15).of(3.1)
   end
 end
 

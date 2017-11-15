@@ -27,4 +27,11 @@ describe Kder do
       (max-min).should be > 0.0
     end
   end
+
+  describe ".kdevec" do
+    it "is identical to #kde for the unit vector" do
+      arr = [1,2,3]
+      expect(described_class.kde(arr,0.1)).to eq(described_class.kdevec(arr.map { |a| [a, 1] }, 0.1))
+    end
+  end
 end
