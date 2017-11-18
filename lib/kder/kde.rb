@@ -1,4 +1,4 @@
-require 'set'
+require 'matrix'
 
 class Kder
   require_relative 'bandwidth'
@@ -82,6 +82,51 @@ class Kder
       end
       output << [max,0]
       output.compact.transpose      
+    end
+
+    #
+    # Smooths multiple data sets with a shared x-axis at the same time. 
+    #
+    # values in the form of: 
+    #
+    # [ 
+    #   [x1, y1, z1, k1],
+    #   [x2, y2, 0, z3], # "Hole" where there is no data for z
+    #   ...
+    # ]
+    #
+    #
+    def kdemultivec(values, bw, opts = {}.freeze)
+      opts = {sigmas: Sigmas, sampling_density: MeshCount, threshold: MinimumThresholdValue, minimum_delta: DifferenceThreshold}.merge(opts)
+
+      # Initialization steps
+      range = bw*opts[:sigmas]
+      min = values.first[0] - range
+      max = values.last[0]  + range
+      step_size = (max-min)/(opts[:sampling_density].to_f)
+      step_size = step_size < MinimumStepSize ? MinimumStepSize : step_size
+
+      # initialize the range variables
+      ranges = (min..max).step(step_size).to_a
+      output = [Array.new(values.first.length-1, 0).unshift(min)]
+      old_intensities = Vector::elements(Array.new(values.first.length-1, 0))
+      # Step through the range
+      ranges[1..-1].map do |mid|
+        high_end  = mid + range
+        lower_end = mid - range
+        selection_range = (lower_end..high_end)
+        included = values.select {|v| selection_range.include?(v[0])}
+
+        intensities = included.collect { |vec| Vector::elements(vec[1..-1],false) * Kder::Statistics.custom_pdf(vec[0] - mid, bw) }.
+          inject(&:+) || old_intensities 
+
+        unless intensities.all? { |v| v < opts[:threshold] } or (intensities - old_intensities).all? { |v| v.abs < opts[:minimum_delta] }
+          output << intensities.to_a.unshift(mid) 
+          old_intensities = intensities
+        end
+      end
+      output << Array.new(values.first.length - 1, 0).unshift(max)
+      output.compact.transpose
     end
   end
 end
